@@ -1,0 +1,101 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+import hashlib
+
+class BankApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Банківська система")
+        self.root.geometry("400x400")
+        self.root.configure(bg="#D4AF37")
+
+        self.user_database = {}
+
+        tk.Label(root, text="Вітаємо у нашому банку!", font=("Arial", 16, "bold"), bg="#D4AF37").pack(pady=10)
+
+        tk.Button(root, text="Реєстрація", font=("Arial", 14), bg="#FFF5B7", command=self.create_account).pack(pady=5)
+        tk.Button(root, text="Вхід", font=("Arial", 14), bg="#FFF5B7", command=self.login).pack(pady=5)
+
+        self.account = None
+
+    def hash_password(self, password):
+        """Хешування пароля"""
+        return hashlib.sha256(password.encode()).hexdigest()
+
+    def create_account(self):
+        """Реєстрація нового користувача"""
+        username = tk.simpledialog.askstring("Реєстрація", "Введіть логін:")
+        password = tk.simpledialog.askstring("Реєстрація", "Введіть пароль:", show="*")
+
+        if username and password:
+            self.user_database[username] = self.hash_password(password)
+            messagebox.showinfo("Успіх", f"Акаунт {username} створено!")
+        else:
+            messagebox.showerror("Помилка", "Будь ласка, заповніть всі поля!")
+
+    def login(self):
+        """Авторизація користувача"""
+        username = tk.simpledialog.askstring("Вхід", "Введіть логін:")
+        password = tk.simpledialog.askstring("Вхід", "Введіть пароль:", show="*")
+
+        if username in self.user_database and self.user_database[username] == self.hash_password(password):
+            messagebox.showinfo("Успіх", f"Вхід успішний! Ласкаво просимо, {username}.")
+            self.account = BankAccount(username, 1000)
+            self.show_account_options()
+        else:
+            messagebox.showerror("Помилка", "Неправильний логін або пароль!")
+
+    def show_account_options(self):
+        """Відкриває вікно з опціями управління рахунком"""
+        account_window = tk.Toplevel(self.root)
+        account_window.title("Банківський рахунок")
+        account_window.geometry("300x300")
+        account_window.configure(bg="#D4AF37")
+
+        tk.Label(account_window, text=f"Баланс: {self.account.get_balance()} грн", font=("Arial", 14), bg="#D4AF37").pack(pady=10)
+
+        tk.Button(account_window, text="Поповнити рахунок", font=("Arial", 12), bg="#FFF5B7", command=self.deposit).pack(pady=5)
+        tk.Button(account_window, text="Зняти кошти", font=("Arial", 12), bg="#FFF5B7", command=self.withdraw).pack(pady=5)
+
+    def deposit(self):
+        """Поповнення рахунку"""
+        amount = tk.simpledialog.askinteger("Внесення коштів", "Введіть суму:")
+        if amount and amount > 0:
+            self.account.deposit(amount)
+            messagebox.showinfo("Успіх", f"Баланс оновлено: {self.account.get_balance()} грн")
+        else:
+            messagebox.showerror("Помилка", "Некоректна сума!")
+
+    def withdraw(self):
+        """Зняття коштів"""
+        amount = tk.simpledialog.askinteger("Зняття коштів", "Введіть суму:")
+        if amount and amount > 0:
+            if self.account.withdraw(amount):
+                messagebox.showinfo("Успіх", f"Баланс оновлено: {self.account.get_balance()} грн")
+            else:
+                messagebox.showerror("Помилка", "Недостатньо коштів!")
+
+class BankAccount:
+    def __init__(self, account_number, balance=0):
+        self.account_number = account_number
+        self.balance = balance
+
+    def deposit(self, amount):
+        """Поповнення рахунку"""
+        self.balance += amount
+
+    def withdraw(self, amount):
+        """Зняття коштів"""
+        if self.balance >= amount:
+            self.balance -= amount
+            return True
+        return False
+
+    def get_balance(self):
+        """Отримання поточного балансу"""
+        return self.balance
+
+
+root = tk.Tk()
+app = BankApp(root)
+root.mainloop()
