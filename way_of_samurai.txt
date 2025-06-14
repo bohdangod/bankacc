@@ -1,0 +1,96 @@
+import tkinter as tk
+import sqlite3
+import matplotlib.pyplot as plt
+
+
+class SamuraiTracker:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🔥 Шлях самурая: баланс розуму і тіла")
+        self.root.configure(bg="#3C3C3C")
+
+        self.db_init()
+
+        tk.Label(root, text="🖥 Час за ПК (год):", fg="white", bg="#3C3C3C", font=("Courier", 12)).pack()
+        self.pc_input = tk.Entry(root)
+        self.pc_input.pack()
+
+        tk.Label(root, text="⚔ Час спорту (год):", fg="white", bg="#3C3C3C", font=("Courier", 12)).pack()
+        self.sport_input = tk.Entry(root)
+        self.sport_input.pack()
+
+        tk.Button(root, text="Записати шлях", command=self.update_data, fg="white", bg="#8B0000").pack()
+        tk.Button(root, text="Показати баланс", command=self.show_balance, fg="white", bg="#8B0000").pack()
+
+        tk.Label(root, text="🏯 Тренування воїна", fg="white", bg="#3C3C3C", font=("Courier", 12)).pack()
+        self.exercises = {"Підтягування": 0, "Віджимання": 0, "Прес": 0, "Присідання": 0}
+        self.exercise_entries = {}
+
+        for exercise in self.exercises:
+            tk.Label(root, text=f"⚔ {exercise}", fg="white", bg="#3C3C3C").pack()
+            entry = tk.Entry(root)
+            entry.pack()
+            self.exercise_entries[exercise] = entry
+
+        tk.Button(root, text="Зберегти вправи", command=self.save_exercises, fg="white", bg="#8B0000").pack()
+        tk.Button(root, text="Графік прогресу", command=self.show_progress, fg="white", bg="#8B0000").pack()
+
+    def db_init(self):
+        self.conn = sqlite3.connect("samurai_progress.db")
+        self.cursor = self.conn.cursor()
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS progress (
+                id INTEGER PRIMARY KEY,
+                pc_time INTEGER,
+                sport_time INTEGER,
+                pullups INTEGER,
+                pushups INTEGER,
+                abs INTEGER,
+                squats INTEGER
+            )
+        """)
+        self.conn.commit()
+
+    def update_data(self):
+        pc_hours = int(self.pc_input.get())
+        sport_hours = int(self.sport_input.get())
+        self.cursor.execute("INSERT INTO progress (pc_time, sport_time) VALUES (?, ?)", (pc_hours, sport_hours))
+        self.conn.commit()
+        self.pc_input.delete(0, tk.END)
+        self.sport_input.delete(0, tk.END)
+
+    def save_exercises(self):
+        values = [int(entry.get()) for entry in self.exercise_entries.values()]
+        self.cursor.execute("""
+            INSERT INTO progress (pullups, pushups, abs, squats)
+            VALUES (?, ?, ?, ?)
+        """, values)
+        self.conn.commit()
+        for entry in self.exercise_entries.values():
+            entry.delete(0, tk.END)
+
+    def show_balance(self):
+        self.cursor.execute("SELECT SUM(pc_time), SUM(sport_time) FROM progress")
+        pc_time, sport_time = self.cursor.fetchone()
+
+        labels = ["Комп'ютер", "Спорт"]
+        times = [pc_time or 0, sport_time or 0]
+        plt.bar(labels, times, color=['red', 'green'])
+        plt.ylabel("Години")
+        plt.title("🔥 Баланс енергії самурая")
+        plt.show()
+
+    def show_progress(self):
+        self.cursor.execute("SELECT SUM(pullups), SUM(pushups), SUM(abs), SUM(squats) FROM progress")
+        values = self.cursor.fetchone()
+        labels = ["Підтягування", "Віджимання", "Прес", "Присідання"]
+
+        plt.bar(labels, values, color=['blue', 'orange', 'green', 'purple'])
+        plt.ylabel("Кількість повторень")
+        plt.title("⚔ Прогрес у тренуваннях")
+        plt.show()
+
+
+root = tk.Tk()
+app = SamuraiTracker(root)
+root.mainloop()
