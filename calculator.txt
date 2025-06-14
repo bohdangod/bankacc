@@ -1,0 +1,79 @@
+import sys
+import cv2
+import pytesseract
+import speech_recognition as sr
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel
+
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Шлях до Tesseract
+
+class SamuraiCalculator(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Самурайський Калькулятор")
+        self.setStyleSheet("background-color: black; color: white; font-size: 18px;")
+
+        self.layout = QVBoxLayout()
+
+        self.label = QLabel("Введи вираз або сфотографуй його:")
+        self.layout.addWidget(self.label)
+
+        self.input_field = QLineEdit()
+        self.layout.addWidget(self.input_field)
+
+        self.calculate_button = QPushButton("⚔️ Обчислити")
+        self.calculate_button.clicked.connect(self.calculate)
+        self.layout.addWidget(self.calculate_button)
+
+        self.camera_button = QPushButton("📸 Розпізнати зображення")
+        self.camera_button.clicked.connect(self.capture_and_recognize)
+        self.layout.addWidget(self.camera_button)
+
+        self.voice_button = QPushButton("🗣️ Голосове введення")
+        self.voice_button.clicked.connect(self.voice_input)
+        self.layout.addWidget(self.voice_button)
+
+        self.result_label = QLabel("")
+        self.layout.addWidget(self.result_label)
+
+        self.setLayout(self.layout)
+
+    def calculate(self):
+        try:
+            expression = self.input_field.text()
+            result = eval(expression)
+            self.result_label.setText(f"Результат: {result}")
+        except Exception as e:
+            self.result_label.setText(f"Помилка: {e}")
+
+    def capture_and_recognize(self):
+        cap = cv2.VideoCapture(0)
+        ret, frame = cap.read()
+        cap.release()
+
+        if ret:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            text = pytesseract.image_to_string(gray, config='digits')
+            self.input_field.setText(text)
+            self.calculate()
+
+    def voice_input(self):
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            self.result_label.setText("🎙️ Говори...")
+            recognizer.adjust_for_ambient_noise(source)
+            audio = recognizer.listen(source)
+
+        try:
+            text = recognizer.recognize_google(audio, language="uk-UA")
+            self.input_field.setText(text)
+            self.calculate()
+        except sr.UnknownValueError:
+            self.result_label.setText("❌ Не вдалося розпізнати голос!")
+        except sr.RequestError:
+            self.result_label.setText("⚠️ Помилка сервісу розпізнавання!")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = SamuraiCalculator()
+    window.show()
+    sys.exit(app.exec())
